@@ -7,22 +7,22 @@
 # Requirements: GDAL 1.8+, numpy,
 #
 ###################################################################
+import argparse
 import datetime
 import os
 import sys
 
 import numpy as np
 from osgeo import gdal
-from osgeo import osr
 
 
 class Hand:
 
-    def __init__(self, dat_dir, overwrite=True, verbose=True, max_height=2000):
-        self.dat_dir = dat_dir
-        self.out_dir = os.path.join(dat_dir, "hand")
-        if not os.path.exists(self.out_dir):
-            os.makedirs(self.out_dir)
+    def __init__(self, input_dir, base_name, overwrite, verbose, max_height=2000):
+        self.input_dir = input_dir
+        self.output_dir = os.path.join(input_dir, "hand")
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
         self.overwrite = overwrite
         self.verbose = verbose
         self.max_height = max_height
@@ -34,12 +34,13 @@ class Hand:
         self.wp = 0     # water pixel counter
 
         # Define input filenames & read in data
-        self.flow_dir_file = os.path.join(self.dat_dir, "PacayaSamiria_FULL_MOSAIC_flowdir_crp.tif")
+        self.flow_dir_file = os.path.join(self.input_dir, base_name + "_flowdir.tif")
         self.flow_dir = self.read_dat(self.flow_dir_file, save_info=True)
-        self.dem_file = os.path.join(self.dat_dir, "PacayaSamiria_FULL_MOSAIC_dem_crp.tif")
+        self.dem_file = os.path.join(self.input_dir, base_name + "_dem.tif")
         self.dem = self.read_dat(self.dem_file)
-        self.drainage_file = os.path.join(self.dat_dir, "PacayaSamiria_FULL_MOSAIC_acc100_strmOrd3_drainage.tif")
+        self.drainage_file = os.path.join(self.dat_dir, base_name + "_drainage.tif")
         self.wat_mask = self.read_dat(self.drainage_file).astype(np.bool)
+        self.hand_file = os.path.join(self.output_dir, base_name + "_hand.tif")
 
     def read_dat(self, filename, save_info=False):
         filehandle = gdal.Open(filename)
@@ -180,9 +181,8 @@ class Hand:
         print " total pixels= ", self.RasterXSize * self.RasterYSize
         print " hand pixels= ", np.count_nonzero(self.hand)
 
-        hand_outfile = os.path.join(self.out_dir, "PacayaSamiria_hand_acc100strmord3.v2.tif")
         driver = gdal.GetDriverByName("GTiff")
-        dst_ds = driver.Create(hand_outfile, self.RasterXSize, self.RasterYSize, 1, gdal.GDT_Int16)
+        dst_ds = driver.Create(self.hand_file, self.RasterXSize, self.RasterYSize, 1, gdal.GDT_Int16)
         band = dst_ds.GetRasterBand(1)
         band.WriteArray(self.hand, 0, 0)
 
@@ -200,8 +200,39 @@ class Hand:
 
 
 
+# ======
+# Main
+#
+# hand.py -i "my_input_directory" -b "s06w075"
+
+
 if __name__ == "__main__":
-    dat_dir = "dat/PacayaSamiria/mosaicked"
-    H = Hand(dat_dir,)
-    H.process_hand()
-    H.write_out()
+    version_num = int(gdal.VersionInfo('VERSION_NUM'))
+    if version_num < 1800: # because of GetGeoTransform(can_return_null)
+        print('ERROR: Python bindings of GDAL 1.8.0 or later required')
+        sys.exit(1)
+
+    parser = argparse.ArgumentParser(description='Generate HAND')
+    apg_input = parser.add_argument_group('Input')
+    apg_input.add_argument("-i", "--inputdir", nargs=1,
+                           help="Filepath to directory containing all 3 required input files")
+    apg_input.add_argument("-b", "--basename", nargs=1,
+                           help="Three required input files (flowdir, dem, drainage) must all have identical basenames "
+                                "in each filename preceeding 'X.tif'")
+    apg_input.add_argument("-m", "--maxheight", default=20, nargs=1,
+                           help="Maximum height above nearest drainage to be considered [meters]")
+    apg_input.add_argument("-o", "--overwrite", action='store_true',
+                           help="Will overwrite any existing files found in hand directory")
+    apg_input.add_argument("-v", "--verbose", action='store_true', help="Verbose on/off")
+    options = parser.parse_args()
+
+    H = Hand(input_dir=options.inputdir, base_name=options.base_name, max_height=int(options.maxheight))
+
+    if not os.path.isfile(H.hand_file) or options.overwrite:
+        H.process_hand()
+        H.write_out()
+    else:
+        print("hand_img exists", H.hand_file)
+
+    if options.verbose:
+        print(str(datetime.now()), "Done.")
