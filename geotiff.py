@@ -44,7 +44,8 @@ def write_singleband_gtiff(outfile, dat, reference_file, dtype=gdal.GDT_Float32)
         outfile (str):              filepath for output file
         dat (numpy.ndarray):        numpy array of data to write to file
         reference_file (str):       filepath of a reference file to set geospatial information
-        dtype (osego.gdalconst):    data type to be written (see: https://naturalatlas.github.io/node-gdal/classes/Constants%20(GDT).html)
+        dtype (osgeo.gdalconst):    data type to be written 
+                                    (see: https://naturalatlas.github.io/node-gdal/classes/Constants%20(GDT).html)
     """
     # Extract relevant information from reference file
     file_info = GeoTiffFileInfo(reference_file)
