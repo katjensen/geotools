@@ -59,7 +59,8 @@ class Hand:
         data = band.ReadAsArray(0, 0, filehandle.RasterXSize, filehandle.RasterYSize)
 
         if self.verbose:
-            print 'Size is ', filehandle.RasterXSize, 'x', filehandle.RasterYSize, 'x', filehandle.RasterCount, "Dtype= ", data.dtype
+            print('Size is ', filehandle.RasterXSize, 'x', filehandle.RasterYSize, 'x', filehandle.RasterCount,
+                  "Dtype= ", data.dtype)
         filehandle = None
         return data
 
@@ -77,13 +78,13 @@ class Hand:
         # Number of water pixels
         num_wps = np.sum(self.wat_mask)
         if self.verbose:
-            print str(datetime.datetime.now()), "Create Sorted Array of Water pixel data...", num_wps, total
+            print(str(datetime.datetime.now()), "Create Sorted Array of Water pixel data...", num_wps, total)
 
         # Create sorted array of water pixels
         wph = np.empty((num_wps,), dtype=[('row', int), ('col', int), ('height', int)])
 
-        for r in xrange(self.RasterYSize):
-            for c in xrange(self.RasterXSize):
+        for r in range(self.RasterYSize):
+            for c in range(self.RasterXSize):
                 if self.wat_mask[r, c]:
                     elev = self.dem[r, c]
                     self.hand[r, c] = 1     # water pixel is automatically set to 1 --> 1m or less
@@ -92,13 +93,13 @@ class Hand:
         wph.sort(order='height')
 
         if self.verbose:
-            print str(datetime.datetime.now()), "Processing water pixel data ... ", num_wps
+            print(str(datetime.datetime.now()), "Processing water pixel data ... ", num_wps)
 
         if num_wps > 0:
             self.progress_bar(ncount / float(num_wps))
 
         # Get through all pixels in surface drainage reference
-        for i in xrange(num_wps):
+        for i in range(num_wps):
             wpx = wph[num_wps - i - 1]  # highest first
             r = wpx["row"]
             c = wpx["col"]
@@ -132,7 +133,7 @@ class Hand:
         """
         neighbors = [[row, col + 1], [row + 1, col + 1], [row + 1, col], [row + 1, col - 1], [row, col - 1],
                      [row - 1, col - 1], [row - 1, col], [row - 1, col + 1]]
-        for i in xrange(8):
+        for i in range(8):
             neighbor_row, neighbor_col = neighbors[i]
             if (neighbor_row < 0) or (neighbor_row > self.RasterYSize - 1):
                 neighbors[i] = None
@@ -175,11 +176,11 @@ class Hand:
                             q.append(pixel)
 
     def write_out(self):
-        print str(datetime.datetime.now()), "Saving Hand dat..."
-        print " water pixels= ", self.wp
-        print " processed= ", self.count
-        print " total pixels= ", self.RasterXSize * self.RasterYSize
-        print " hand pixels= ", np.count_nonzero(self.hand)
+        print(str(datetime.datetime.now()), "Saving Hand dat...")
+        print(" water pixels= ", self.wp)
+        print(" processed= ", self.count)
+        print(" total pixels= ", self.RasterXSize * self.RasterYSize)
+        print(" hand pixels= ", np.count_nonzero(self.hand))
 
         driver = gdal.GetDriverByName("GTiff")
         dst_ds = driver.Create(self.hand_file, self.RasterXSize, self.RasterYSize, 1, gdal.GDT_Int16)
@@ -208,7 +209,7 @@ class Hand:
 
 if __name__ == "__main__":
     version_num = int(gdal.VersionInfo('VERSION_NUM'))
-    if version_num < 1800: # because of GetGeoTransform(can_return_null)
+    if version_num < 1800:  # because of GetGeoTransform(can_return_null)
         print('ERROR: Python bindings of GDAL 1.8.0 or later required')
         sys.exit(1)
 
@@ -235,4 +236,4 @@ if __name__ == "__main__":
         print("hand_img exists", H.hand_file)
 
     if options.verbose:
-        print(str(datetime.now()), "Done.")
+        print(str(datetime.datetime.now()), "Done.")
